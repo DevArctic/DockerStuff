@@ -1,0 +1,59 @@
+version: "2"
+services:
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: Gluetun_P
+      - NET_ADMIN
+    network_mode: bridge
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - 1301:8080/tcp #aria
+      - 1302:1302/tcp #transmission
+    volumes:
+      - /Ariel/Downloads-P/Gluetun:/gluetun
+    environment:
+      - VPN_SERVICE_PROVIDER=nordvpn
+      - OPENVPN_USER=
+      - OPENVPN_PASSWORD=
+      - SERVER_REGIONS=Netherlands
+    restart: always
+  transmission:
+    image: ghcr.io/linuxserver/transmission
+    restart: always
+    container_name: "Transmission_P"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - USER=admin
+      - PASS=averycomplexpasswordhere
+    network_mode: "service:gluetun"
+    volumes:
+      - "/Ariel/Downloads-P/Config:/config"
+      - "/Ariel/Downloads-P/Downloads:/downloads"
+      - "/Ariel/Downloads-P/Watch:/watch"
+  ariang:
+    image: hurlenko/aria2-ariang
+    container_name: "Aria_P"
+    network_mode: "service:gluetun"
+    volumes:
+      - /Ariel/Downloads-P/AriaDownloads:/aria2/data
+      - /Ariel/Downloads-P/AriaConfig:/aria2/conf
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - ARIA2RPCPORT=1301
+    restart: always
+
+  floodui:
+    image: jesec/flood
+    build: floodui
+    container_name: "Flood_P"
+    restart: always
+    network_mode: "service:gluetun"
+    volumes:
+      - "/Ariel/Downloads-P/Downloads:/downloads"
+      - "/Ariel/Downloads-P/Flood:/root/.local/share/flood"
+    depends_on: 
+      - transmission
+    command: --port 1302 --auth none --trurl http://127.0.0.1:9091/transmission/rpc --truser admin --trpass averycomplexpasswordhere
